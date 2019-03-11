@@ -299,7 +299,16 @@
     <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
     <section title="Security Considerations">
       <t>
-        (tbd: write security considerations)
+        To be completed. Key initial topics include:
+        1) changes to the QUIC security model, since any attempt to provide
+           relayed connectivity checks for NAT traversal requires some degree
+           of trust in the relay server;
+        2) information leaks via STUN, if used for connectivity checks, even
+           if just leaking that a peer-to-peer connection establishment is
+           ongoing (the latter can likely be inferred from the range of IP
+           addresses used, but there may be other information leaks); and
+        3) security properties of the signalling protocol used to communicate
+           with the relay server.
       </t>
     </section>
     <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
