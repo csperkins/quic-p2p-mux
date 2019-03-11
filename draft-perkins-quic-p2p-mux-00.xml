@@ -263,6 +263,24 @@
 
       <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
       <section title="Connection Establishment">
+        <t>
+          The connectivity checks determine that it is possible to send STUN
+          packets in UDP on an particular 5-tuple. Once the connectivity checks
+          have concluded, and a candidate pair has been selected, the QUIC
+          endpoints will attempt to establish a QUIC connection on the chosen
+          path.
+        </t>
+
+        <t>
+          To ensure the NAT ports are open, it is necessary that traffic flows
+          in both directions. It might be that it is sufficient to pick a peer
+          to act as the server (e.g., highest numbered IP address becomes the
+          server), or it might be necessary to perform a simultaneous open of
+          the QUIC connection (in a similar manner to TCP simultaneous open).
+          This will depend on the extent to which middleboxes attempt to
+          detect and control QUIC connection establishment. Simultaneous
+          open seems most robust, but at the expense of complexity.
+        </t>
       </section>
     </section>
     <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
