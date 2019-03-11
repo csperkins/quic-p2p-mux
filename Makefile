@@ -10,6 +10,8 @@ all: $(DRAFTS)
 	@xml2rfc $<
 	@egrep -ns --colour "\\bmust|required|shall|should|recommended|may|optional\\b" $< || true
 	@egrep -ns --colour "\\btbd\\b" $< || true
+	@egrep -ns --colour "\\bFIXME\\b" $< || true
+	@egrep -ns --colour "\\bTODO\\b" $< || true
 
 %.pdf: %.txt
 	@echo "*** enscript $< -> $@"
