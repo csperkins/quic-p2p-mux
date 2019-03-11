@@ -234,6 +234,31 @@
 
       <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
       <section title="Connectivity Checks">
+        <t>
+          The assumption is that connectivity checks proceed using STUN, as
+          is described in Section 7 of <xref target="RFC8445"/>. This has the
+          benefit of working with existing STUN servers, reusing existing
+          specifications, and of allowing code reuse. It also continues to
+          exercise the ability of middleboxes to pass STUN traffic, which
+          is necessary for WebRTC NAT traversal and to support other peer
+          to peer applications. It further ossifies STUN as the commonly
+          used protocol for connectivity checks in the Internet. 
+        </t>
+
+        <t>
+          Alternatively, a QUIC-specific connectivity check protocol could
+          be developed. This would fulfil the same role STUN plays in
+          <xref target="RFC8445"/>, but could use a syntax that is closer
+          to that of other QUIC packets, and could perhaps better integrate
+          with the QUIC security mechanisms.
+          It is the belief of the author that the benefits of such a new
+          syntax for a STUN-like service do not outweigh the complexity of
+          developing the new mechanism, and that it is beneficial to have
+          a single, widely used, connectivity checking standard. 
+          It is, however, possible to define a new connectivity check
+          protocol, and such a protocol could avoid some of the complexity
+          and backwards compatibility features included in STUN.
+        </t>
       </section>
 
       <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
