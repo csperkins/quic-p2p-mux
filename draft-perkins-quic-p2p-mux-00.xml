@@ -27,7 +27,7 @@
         <email>csp@csperkins.org</email>
       </address>
     </author>
-    <date day="20" month="December" year="2018" />
+    <date day="11" month="March" year="2019" />
     <abstract>
       <t>
         (tbd: write abstract)
@@ -91,7 +91,7 @@
         connection will create a NAT binding, allowing the response from the
         QUIC server to pass the NAT and reach the client. The QUIC handshake
         proceeds as normal, and the connection is established. However, if
-        the QUIC server is behind a NAT, then the initial packet send by the
+        the QUIC server is behind a NAT, then the initial packet sent by the
         QUIC client will reach a port on the NAT for which there is no active
         binding and will be dropped. The connection cannot be established in
         this case.
@@ -175,26 +175,28 @@
           Section 5.3 of <xref target="RFC8445"/> describes the information
           to be communicated during the exchange of candidates. This can be
           used unchanged, but the protocol used to exchange the candidates
-          needs to be defined for QUIC.
+          needs to be defined for the ICE usage for QUIC.
         </t>
 
         <t>
           The key design decision to make is what is the signalling protocol
-          to be used with ICE when establishing QUIC connections? Multimedia
-          conferencing uses of ICE can naturally use an SDP offer/answer
+          to be used with ICE when establishing QUIC connections? The multimedia
+          conferencing uses of ICE naturally use an SDP offer/answer
           exchange <xref target="I-D.ietf-mmusic-ice-sip-sdp"/> to convey
           this information, but asking QUIC endpoints to implement SDP is
-          suboptimal, at best. At alternative is needed.
+          not acceptable. An alternative is needed.
         </t>
 
         <t>
           There are two approaches.
           Firstly, the candidate exchange can be performed out-of-band from 
           the point of view of QUIC, by some higher level signalling protocol.
-          This relies on the application embedding QUIC to perform the necessary
-          signalling, extract the set of local candidates from the QUIC stack
-          and pass it to the peer, and pass in the set of remote candidates
-          received from the peer to the QUIC stack.
+          This assumes that the application that uses QUIC will perform the
+          necessary signalling. The application will extract the set of
+          local candidates from the QUIC stack and pass them to the peer,
+          then later pass in the set of remote candidates received from the
+          peer to the QUIC stack to trigger the systematic probing of candidate
+          addresses.
           This requires no QUIC-specific protocol standardisation, other than
           to specify when the exchange happens, since the signalling protocol
           is application specific and the interface between the QUIC stack 
@@ -208,15 +210,16 @@
           a general way for an indirect QUIC connection, made via a middlebox relay
           of some sort, to signal candidates to the endpoints, allowing them to
           bootstrap a direct peer-to-peer QUIC connection.
-          This is a significant change to the QUIC trust model. It introduces a
-          trusted middlebox that can relay candidate information, but such a
-          trusted device is necessary to bootstrap any direct peer-to-peer connection
-          in the presence of NATs, since it is not possible to establish a direct
-          connection without the help of a relay.
+          This is a significant change to the QUIC security model, since it
+          introduces a trusted middlebox that can relay candidate information,
+          so exposing that communication is taking place.
+          However, such a trusted device is necessary to bootstrap any direct
+          peer-to-peer connection in the presence of NATs, since it is not possible
+          to establish a direct connection without the help of a relay.
           Adding the candidate exchange mechanism to QUIC allows the provision of
           generic NAT traversal bootstrapping, allowing for reusable libraries and
           common mechanisms, but potentially risks missing out on application 
-          integration that may provide useful peer identity guarantees and
+          integration that could provide useful peer identity guarantees and
           end-to-end security mechanisms for the signalling.
         </t>
 
