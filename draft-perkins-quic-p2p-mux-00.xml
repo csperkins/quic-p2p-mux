@@ -10,10 +10,10 @@
 <?rfc inline="yes"?>
 <?rfc compact="yes"?>
 <?rfc subcompact="no"?>
-<rfc category="info" docName="draft-perkins-quic-p2p-mux-00" ipr="trust200902">
+<rfc category="std" docName="draft-perkins-quic-p2p-mux-00" ipr="trust200902">
   <front>
-    <title abbrev="Peer-to-Peer Use of QUIC">
-      Peer-to-Peer Use of QUIC
+    <title abbrev="Peer-to-Peer QUIC">
+      Peer-to-Peer Connections for the QUIC Transport Protocol
     </title>
     <author fullname="Colin Perkins" initials="C. S." surname="Perkins">
       <organization>University of Glasgow</organization>
@@ -30,7 +30,7 @@
     <date day="20" month="December" year="2018" />
     <abstract>
       <t>
-        (tbd)
+        (tbd: write abstract)
       </t>
     </abstract>
   </front>
@@ -38,36 +38,239 @@
   <middle>
     <section title="Introduction">
       <t>
-        ...
+        QUIC <xref target="I-D.ietf-quic-transport"/> is a multiplexed and
+        secure general-purpose transport protocol. It is a connection-oriented
+        protocol, where the end-points take the role of either client or server.
+        The server passively listens for incoming connections; clients actively
+        connect to servers. Once the connection has been established, QUIC
+        is symmetric and allows either end-point to send and receive data on
+        multiplexed streams within the connection.
+      </t>
+
+      <t>
+        The client-server design of QUIC supports connection establishment when
+        client and server are in the same addressing realm, or if the client is
+        behind a network address/port translator (NAT). In this latter case,
+        the outgoing connection request establishes state in the NAT, opening
+        the port to allow the response from the server to reach the client.
+        QUIC provides connection migration and path validation mechanisms that
+        ensure connections can survive NAT rebinding events. The initial version
+        of QUIC has no support, however, for establishing connections with a
+        server that is behind a NAT. Specifically, QUIC does not provide any
+        mechanism to probe connectivity and create the necessary NAT bindings
+        to allow incoming connections to a server that is behind a NAT.
+      </t>
+
+      <t>
+        The combination of the STUN <xref target="RFC5389"/> protocol and the
+        Interactive Connectivity Establishment (ICE) framework <xref target="RFC8445"/>
+        provides those mechanisms needed to establish connections in the presence
+        of NATs, supporting path probing and NAT binding discovery/creation. This
+        memo discusses how STUN and ICE can be used with QUIC to establish
+        connections when the server (and optionally the client) are behind NATs.
       </t>
     </section>
+    <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+    <section title="Background">
+      <t>
+        A NAT translates IP addresses and ports in IP and UDP packet headers,
+        separating the addressing realm used behind the NAT from the external
+        addressing realm. The addressing realm behind the NAT will often use
+        private IP addresses <xref target="RFC1918"/>, and the external addressing
+        realm is often the public Internet, but this is not mandated. When a
+        packet is sent from an endpoint behind a NAT to an external endpoint,
+        state is created in the NAT allowing replies to be returned. This is
+        known as a NAT binding. If the NAT receives a packet on an external
+        port that is not subject to an active NAT binding, that packet is
+        dropped.
+      </t>
+      <t>
+        Two QUIC endpoints wish to communicate. One or both of the endpoints
+        might be behind a NAT. If the QUIC client is behind a NAT, then the
+        outgoing initial packet sent from client to server to establish the
+        connection will create a NAT binding, allowing the response from the
+        QUIC server to pass the NAT and reach the client. The QUIC handshake
+        proceeds as normal, and the connection is established. However, if
+        the QUIC server is behind a NAT, then the initial packet send by the
+        QUIC client will reach a port on the NAT for which there is no active
+        binding and will be dropped. The connection cannot be established in
+        this case.
+      </t>
 
+      <t>
+        ICE provides a framework for probing connectivity and creating NAT
+        bindings to allow connections to be established. It proceeds in four
+        phases:
+        <list style="symbols">
+          <t>
+            Gathering candidates: The endpoints discover the set of possible
+            IP addresses and ports ("transport addresses") on which they can
+            be reached, known as the set of "candidates". The candidate set
+            includes transport addresses bound to directly attached network
+            interfaces, translated transport addresses on the outside of a
+            NAT ("server-reflexive addresses"), and transport addresses
+            allocated via some form of relay ("relayed addresses". When
+            gathering the candidates, STUN is used to discover server
+            reflexive addresses, and the relay protocol (e.g., TURN) is
+            used to determine relayed addresses.
+          </t>
+          <t>
+            Exchanging candidates: The endpoints exchanges their candidate
+            sets. Since the two endpoints cannot directly communicate, due
+            to the presence of the NATs, this exchange has to be done
+            indirectly via an external relay that is reachable by both
+            endpoints. In the multimedia conferencing systems for which
+            ICE was defined, this exchange takes place over the signalling
+            channel (e.g., SIP or WebRTC). This signalling is heavyweight
+            and multimedia specific, and is not appropriate for QUIC, so
+            an alternative mechanism will need to be defined. 
+          </t>
+          <t>
+            Connectivity checks: Once the candidate sets have been exchanged,
+            the endpoint systematically probe all pairs of local and remote
+            candidates, in priority order, to determine which candidate pairs
+            can be used to communicate. Each pair of candidates is probed, by
+            sending a request and checking for a response, in both directions.
+            This ensures that NAT bindings are established form each endpoint,
+            so connectivity is found even if both endpoints are behind NATs.
+          </t>
+          <t>
+            Connection establishment: Once the connectivity checks succeed for
+            a suitable pair of candidates, the connection is established using
+            those candidates in the normal manner.
+          </t>
+        </list>
+        The ICE framework was designed to support multimedia conferencing, and
+        defines the signalling to exchange candidates in a way that is specific
+        to those systems. The technique is generic however, and can be adapted
+        to support NAT traversal and connection establishment for QUIC.
+      </t>
 
+    </section>
+    <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+    <section title="QUIC Connection Establishment in the Presence of NATs">
+
+      <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+      <section title="Gathering Candidates">
+        <t>
+          Candidates are gathered as in Section 5 of <xref target="RFC8445"/>.
+          The Initiating Agent is the QUIC client. The Responding Agent is the
+          QUIC server. RTP and RTCP are not used, and candidates are gathered
+          for a single QUIC component instead. A QUIC server that "knows" that
+          it is not behind a NAT MAY use the lite mechanism described in Section
+          5.2 of <xref target="RFC8445"/>.
+        </t>
+
+        <t>
+          Editor's note: clarifications are likely needed since the candidate
+          gathering in <xref target="RFC8445"/> is written assuming RTP and RTCP
+          candidates, but the approach looks suitable for QUIC without significant
+          change.
+        </t>
+      </section>
+
+      <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+      <section title="Exchanging Candidates">
+        <t>
+          Section 5.3 of <xref target="RFC8445"/> describes the information
+          to be communicated during the exchange of candidates. This can be
+          used unchanged, but the protocol used to exchange the candidates
+          needs to be defined for QUIC.
+        </t>
+
+        <t>
+          The key design decision to make is what is the signalling protocol
+          to be used with ICE when establishing QUIC connections? Multimedia
+          conferencing uses of ICE can naturally use an SDP offer/answer
+          exchange <xref target="I-D.ietf-mmusic-ice-sip-sdp"/> to convey
+          this information, but asking QUIC endpoints to implement SDP is
+          suboptimal, at best. At alternative is needed.
+        </t>
+
+        <t>
+          There are two approaches.
+          Firstly, the candidate exchange can be performed out-of-band from 
+          the point of view of QUIC, by some higher level signalling protocol.
+          This relies on the application embedding QUIC to perform the necessary
+          signalling, extract the set of local candidates from the QUIC stack
+          and pass it to the peer, and pass in the set of remote candidates
+          received from the peer to the QUIC stack.
+          This requires no QUIC-specific protocol standardisation, other than
+          to specify when the exchange happens, since the signalling protocol
+          is application specific and the interface between the QUIC stack 
+          and that signalling protocol is implementation specific. Standards
+          are likely needed to define the signalling for specific applications
+          that use QUIC in this way.
+        </t>
+
+        <t>
+          Alternatively, the candidate exchange can be embedded into QUIC to provide
+          a general way for an indirect QUIC connection, made via a middlebox relay
+          of some sort, to signal candidates to the endpoints, allowing them to
+          bootstrap a direct peer-to-peer QUIC connection.
+          This is a significant change to the QUIC trust model. It introduces a
+          trusted middlebox that can relay candidate information, but such a
+          trusted device is necessary to bootstrap any direct peer-to-peer connection
+          in the presence of NATs, since it is not possible to establish a direct
+          connection without the help of a relay.
+          Adding the candidate exchange mechanism to QUIC allows the provision of
+          generic NAT traversal bootstrapping, allowing for reusable libraries and
+          common mechanisms, but potentially risks missing out on application 
+          integration that may provide useful peer identity guarantees and
+          end-to-end security mechanisms for the signalling.
+        </t>
+
+        <t>
+          The right approach is likely to define a common abstract interface
+          between QUIC and the candidate exchange signalling, specifying what
+          information is to be exchanged and when. Then, also define a common
+          signalling protocol that MAY be used if there is no more suitable
+          application specific mechanism.
+        </t>
+      </section>
+
+      <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+      <section title="Connectivity Checks">
+      </section>
+
+      <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+      <section title="Connection Establishment">
+      </section>
+    </section>
+    <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+    <section title="Demultiplexing QUIC and STUN">
+    </section>
+    <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
     <section title="Security Considerations">
       <t>
-        (tbd)
+        (tbd: write security considerations)
       </t>
     </section>
-
+    <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
     <section title="IANA Considerations">
       <t>
-        (tbd)
+        No IANA actions needed.
       </t>
     </section>
-
+    <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
     <section anchor="Acknowledgements" title="Acknowledgements">
       <t>
-        (tbd)
+        This work was supported by the UK Engineering and Physical Sciences
+        Research Council under grant EP/R04144X/1.
       </t>
     </section>
   </middle>
   <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
   <back>
     <references title="Normative References">
+      <?rfc include="reference.RFC.1918"?>
       <?rfc include="reference.RFC.2119"?>
+      <?rfc include="reference.RFC.5389"?>
+      <?rfc include="reference.RFC.8445"?>
+      <?rfc include="reference.I-D.ietf-quic-transport"?>
     </references>
     <references title="Informative References">
-      <?rfc include="reference.I-D.ietf-quic-transport"?>
+      <?rfc include="reference.I-D.ietf-mmusic-ice-sip-sdp"?>
     </references>
   </back>
 </rfc>
